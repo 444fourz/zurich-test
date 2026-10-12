@@ -5,7 +5,9 @@
  * No sensitive data is logged to the console (GDPR compliance).
  */
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5173';
+// Falls back to the backend's default address (not the Vite dev server's port).
+// Any trailing slash is removed so paths like "/applications" join cleanly.
+const API_BASE_URL = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/+$/, '');
 
 interface ApplicationData {
   personal: {
