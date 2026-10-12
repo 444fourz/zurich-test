@@ -19,8 +19,4 @@ __pycache__/
 venv/
 env/
 
-# Local databases (may contain personal data)
-*.db
-*.db-wal
-*.db-shm
-*.sqlite3
+
