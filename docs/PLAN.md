@@ -1,6 +1,6 @@
 # Project Plan: Health Insurance Underwriting Website
 
-Status: Draft. Technology choices are proposals until the open decisions in section 9 are resolved.
+Status: Draft. Technology choices are proposals until the open decisions in section 9 are resolved. The database is decided: Supabase (hosted PostgreSQL).
 
 ## 1. Goals
 
@@ -11,12 +11,12 @@ Status: Draft. Technology choices are proposals until the open decisions in sect
 
 ## 2. Current State
 
-| Area     | Done                                                       | Missing                                            |
-|----------|------------------------------------------------------------|----------------------------------------------------|
-| Backend  | FastAPI app, `/health`, `/underwrite`, placeholder scoring | Persistence, auth, tests, config, rules separation |
-| Frontend | Single form (age, BMI, smoker) showing the outcome         | Project scaffolding, routing, validation, auth     |
-| Data     | None                                                       | Database, migrations, document storage             |
-| Tooling  | None                                                       | Dependency files, CI, linting, containers          |
+| Area     | Done                                                       | Missing                                                      |
+|----------|------------------------------------------------------------|--------------------------------------------------------------|
+| Backend  | FastAPI app, `/health`, `/underwrite`, placeholder scoring | Persistence, auth, tests, config, rules separation           |
+| Frontend | Single form (age, BMI, smoker) showing the outcome         | Project scaffolding, routing, validation, auth               |
+| Data     | None                                                       | Supabase project, schema, migrations, document storage       |
+| Tooling  | None                                                       | Dependency files, environment config, CI, linting            |
 
 ## 3. Users and Roles
 
@@ -41,8 +41,10 @@ Status: Draft. Technology choices are proposals until the open decisions in sect
               |
      ---------------------
      |                   |
-[ PostgreSQL ]   [ Encrypted object storage ]
+[ Supabase PostgreSQL ]   [ Encrypted object storage ]
 ~~~
+
+The backend connects to Supabase through a standard PostgreSQL connection string (`DATABASE_URL`) using SQLAlchemy and Alembic. This keeps the code portable, so Supabase is a hosting choice rather than a hard dependency.
 
 ### Target repository layout
 
@@ -64,7 +66,7 @@ frontend/
     pages/ components/ api/
   package.json
 docs/
-docker-compose.yml
+.env.example         # placeholder settings, safe to commit
 .github/workflows/ci.yml
 ~~~
 
@@ -75,16 +77,19 @@ docker-compose.yml
 - Add `requirements.txt` and a Vite project (`package.json`, `index.html`, `main.tsx`) so the frontend runs.
 - Move scoring into a separate `rules` module with no FastAPI imports.
 - Add pytest with unit tests for the current scoring thresholds.
-- Move the API URL and CORS origins into environment configuration.
-- Add `docker-compose.yml` with PostgreSQL, and a CI workflow running tests and linting.
+- Move the API URL, CORS origins and `DATABASE_URL` into environment configuration.
+- Create a Supabase project for development, share access with the pair, and store the connection string in a git-ignored `.env`. Commit a `.env.example` with placeholders only.
+- Add a CI workflow running tests and linting, using a throwaway PostgreSQL service container rather than the shared Supabase database.
 
 Done when: a fresh clone can be started with documented commands, and CI passes.
 
 ### M1: Data and authentication
-- Add SQLAlchemy and Alembic, with migrations for the data model in section 6.
-- Implement registration and login with hashed passwords and JWT sessions.
+- Add SQLAlchemy and Alembic, with migrations for the data model in section 6, applied to Supabase.
+- Implement registration and login with hashed passwords and JWT sessions (or Supabase Auth, depending on the decision in section 9).
 - Add role-based access control as a reusable dependency.
+- Enable Row Level Security on tables as defence in depth, even though the backend enforces access.
 - Add audit logging for authentication events.
+- Add a seed script that creates fake users and applications.
 
 Done when: users can register and log in, and endpoints reject the wrong roles (tested).
 
@@ -114,10 +119,11 @@ Done when: a referred case can be resolved by an underwriter, with a full audit 
 
 ### M5: Hardening and release
 - Multi-factor authentication for staff, rate limiting, security headers.
+- Create a separate production Supabase project, with backups enabled and access restricted.
 - Security review and dependency scanning.
 - Accessibility audit of all forms.
 - End-to-end tests (applicant and underwriter journeys).
-- Backups, monitoring, deployment pipeline, retention and deletion policy.
+- Monitoring, deployment pipeline, retention and deletion policy.
 
 Done when: the compliance checklist in section 8 is signed off.
 
@@ -152,23 +158,28 @@ Done when: the compliance checklist in section 8 is signed off.
 - Strong password hashing; multi-factor authentication for staff.
 - Least-privilege access; audit every read and write of sensitive data.
 - Encryption at rest and in transit; no health data in logs.
-- Regulatory review (HIPAA, GDPR or UK equivalents, depending on market).
+- Secrets (database URL, keys) live only in git-ignored `.env` files or the hosting platform's secret store, never in the repository.
+- The shared development database holds fake data only. Production uses a separate Supabase project.
+- Regulatory review (HIPAA, GDPR or UK equivalents, depending on market), including where the Supabase region stores data.
 - Fairness: rules must not discriminate unlawfully, and decisions must be explainable.
 - Testing: unit tests for rules (highest risk), API tests per endpoint and role, end-to-end tests for key journeys, accessibility checks.
 
 ## 9. Open Decisions
 
-1. Which market and regulations apply? (Blocks M1 data handling and M5.)
-2. Preferred frameworks and hosting platform?
+1. Which market and regulations apply? (Blocks M1 data handling and M5, and the choice of Supabase region.)
+2. Preferred hosting platform for the backend and frontend? (The database is Supabase.)
 3. Are underwriting rules already defined, or do they need designing with an actuary? (Blocks M3.)
 4. Which integrations are needed (payments, identity checks, medical records)?
 5. Expected user volumes and availability targets?
+6. Do we use Supabase Auth and Storage, or only the database with our own authentication and object storage? (Affects M1 and M2.)
 
 ## 10. Risks
 
-| Risk                                  | Mitigation                                           |
-|---------------------------------------|------------------------------------------------------|
-| Rules change without an audit record  | Version rules and store the version with each result |
-| Sensitive data leakage                | Encryption, access logging, no data in logs          |
-| Unfair or opaque decisions            | Explanations stored with every assessment            |
-| Scope growth before rules are defined | Keep M3 configurable; confirm rules early            |
+| Risk                                      | Mitigation                                                      |
+|-------------------------------------------|-----------------------------------------------------------------|
+| Rules change without an audit record     | Version rules and store the version with each result            |
+| Sensitive data leakage                    | Encryption, access logging, no data in logs                     |
+| Real data entered into the shared dev DB  | Fake data only, seed script, separate production project        |
+| Free tier pauses or limits hit during dev | Keep the app portable via `DATABASE_URL`; upgrade if needed     |
+| Unfair or opaque decisions                | Explanations stored with every assessment                       |
+| Scope growth before rules are defined     | Keep M3 configurable; confirm rules early                       |
