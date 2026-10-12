@@ -1,15 +1,32 @@
 import { FormEvent, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+
+import { useAuth } from "../auth/AuthContext";
 
 export default function LoginPage() {
+  const { login } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const from = (location.state as { from?: string } | null)?.from ?? "/apply";
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [submitted, setSubmitted] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
-  function handleSubmit(event: FormEvent) {
+  async function handleSubmit(event: FormEvent) {
     event.preventDefault();
-    // TODO (M1): call the backend login endpoint and store the session.
-    setSubmitted(true);
+    setError(null);
+    setSubmitting(true);
+
+    try {
+      await login(email, password);
+      navigate(from, { replace: true });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -39,14 +56,14 @@ export default function LoginPage() {
           />
         </label>
 
-        <button className="button" type="submit">
-          Log in
+        <button className="button" type="submit" disabled={submitting}>
+          {submitting ? "Logging in…" : "Log in"}
         </button>
       </form>
 
-      {submitted && (
-        <p className="notice">
-          Authentication isn't connected yet. It arrives in milestone M1.
+      {error && (
+        <p className="notice" role="alert">
+          {error}
         </p>
       )}
 

@@ -1,15 +1,32 @@
-import { NavLink, Outlet } from "react-router-dom";
+import { NavLink, Outlet, useNavigate } from "react-router-dom";
 
-const links = [
+import { useAuth } from "../auth/AuthContext";
+
+const commonLinks = [
   { to: "/", label: "Home", end: true },
   { to: "/apply", label: "Apply" },
   { to: "/applications", label: "My applications" },
   { to: "/referrals", label: "Referrals" },
+];
+
+const guestLinks = [
   { to: "/login", label: "Log in" },
   { to: "/register", label: "Register" },
 ];
 
 export default function Layout() {
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+
+  const links: { to: string; label: string; end?: boolean }[] = user
+    ? commonLinks
+    : [...commonLinks, ...guestLinks];
+
+  async function handleLogout() {
+    await logout();
+    navigate("/");
+  }
+
   return (
     <>
       <header className="site-header">
@@ -25,6 +42,15 @@ export default function Layout() {
               {link.label}
             </NavLink>
           ))}
+
+          {user && (
+            <>
+              <span>{user.fullName}</span>
+              <button type="button" className="button-link" onClick={handleLogout}>
+                Log out
+              </button>
+            </>
+          )}
         </nav>
       </header>
 

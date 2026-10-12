@@ -1,7 +1,36 @@
 """Pydantic schemas for API request and response validation."""
 
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 from typing import List, Optional
+
+
+class RegisterSchema(BaseModel):
+    """Registration request."""
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    fullName: str = Field(min_length=1, max_length=200)
+    email: EmailStr
+    password: str = Field(min_length=8, max_length=128)
+
+
+class LoginSchema(BaseModel):
+    """Login request."""
+    email: EmailStr
+    password: str = Field(min_length=1, max_length=128)
+
+
+class UserSchema(BaseModel):
+    """Public view of a user. Never includes the password hash."""
+    id: int
+    email: str
+    fullName: str
+    role: str
+
+
+class TokenResponseSchema(BaseModel):
+    """Returned after a successful login or registration."""
+    accessToken: str
+    user: UserSchema
 
 
 class PersonalDetailsSchema(BaseModel):

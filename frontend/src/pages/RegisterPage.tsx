@@ -1,16 +1,31 @@
 import { FormEvent, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+
+import { useAuth } from "../auth/AuthContext";
 
 export default function RegisterPage() {
+  const { register } = useAuth();
+  const navigate = useNavigate();
+
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [submitted, setSubmitted] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
-  function handleSubmit(event: FormEvent) {
+  async function handleSubmit(event: FormEvent) {
     event.preventDefault();
-    // TODO (M1): call the backend registration endpoint.
-    setSubmitted(true);
+    setError(null);
+    setSubmitting(true);
+
+    try {
+      await register({ fullName: name, email, password });
+      navigate("/apply", { replace: true });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -46,20 +61,21 @@ export default function RegisterPage() {
             type="password"
             autoComplete="new-password"
             minLength={8}
+            maxLength={128}
             required
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
         </label>
 
-        <button className="button" type="submit">
-          Register
+        <button className="button" type="submit" disabled={submitting}>
+          {submitting ? "Registering…" : "Register"}
         </button>
       </form>
 
-      {submitted && (
-        <p className="notice">
-          Registration isn't connected yet. It arrives in milestone M1.
+      {error && (
+        <p className="notice" role="alert">
+          {error}
         </p>
       )}
 
