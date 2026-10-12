@@ -9,3 +9,9 @@
 # Frontend
 node_modules/
 dist/
+
+# Local databases (may contain personal data)
+*.db
+*.db-wal
+*.db-shm
+*.sqlite3
