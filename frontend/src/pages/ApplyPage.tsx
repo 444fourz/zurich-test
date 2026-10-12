@@ -107,11 +107,30 @@ export default function ApplyPage() {
     if (currentStep > 1) setCurrentStep(currentStep - 1);
   };
 
-  const handleSubmit = (event: FormEvent) => {
+  const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
-    // TODO (M2): Submit to backend API
-    console.log("Application submitted:", formData);
-    alert("Application submitted successfully! (This is a placeholder)");
+    
+    try {
+      // Import the API client
+      const { submitApplication } = await import("../api/client");
+      
+      // Submit to backend - no console.log (GDPR: no health data in logs)
+      const result = await submitApplication(formData);
+      
+      // Show success message with application reference
+      alert(
+        `Application submitted successfully!\n\n` +
+        `Your reference: ${result.reference}\n\n` +
+        `Please save this reference for your records.`
+      );
+      
+      // TODO (M2): Redirect to status page or show confirmation screen
+      
+    } catch (error) {
+      // Show error to user
+      const message = error instanceof Error ? error.message : "An error occurred";
+      alert(`Failed to submit application: ${message}`);
+    }
   };
 
   const calculateBMI = () => {
